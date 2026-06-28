@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 const CONSENT_STORAGE_KEY = "qahwa-vibes-analytics-consent";
 const PRIVACY_SETTINGS_EVENT = "qahwa-vibes:open-privacy-settings";
+// Public env only: this is safe to expose and lets deployments disable GA by
+// omitting NEXT_PUBLIC_GA_ID.
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 type AnalyticsConsent = "allowed" | "declined";
@@ -38,6 +40,7 @@ export default function AnalyticsConsentManager() {
     const restoreTimer = window.setTimeout(() => {
       const savedConsent = getSavedConsent();
 
+      // Read consent after mount so the first client render matches the server.
       setConsent(savedConsent);
       setIsBannerOpen(savedConsent === null);
       setHasMounted(true);
@@ -65,6 +68,8 @@ export default function AnalyticsConsentManager() {
       return;
     }
 
+    // Track App Router navigations after consent. Google checks may not detect
+    // this tag until a visitor accepts analytics and the script is allowed to load.
     window.gtag("event", "page_view", {
       page_path: `${pathname}${window.location.search}`,
       page_title: document.title,
@@ -86,6 +91,7 @@ export default function AnalyticsConsentManager() {
     window.gtag = (...args: unknown[]) => {
       window.dataLayer?.push(args);
     };
+    // Runs only after consent and script load, never during initial render.
     window.gtag("js", new Date());
     window.gtag("config", GA_ID, { send_page_view: false });
     setIsGaReady(true);
@@ -98,6 +104,8 @@ export default function AnalyticsConsentManager() {
   return (
     <>
       {consent === "allowed" && GA_ID ? (
+        // Consent-gated GA load. Google's automatic "tag detected" checker may
+        // report no tag until someone clicks "Allow analytics."
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
           strategy="afterInteractive"
