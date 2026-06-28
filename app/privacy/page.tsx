@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const sections = [
   {
     title: "Optional analytics",
-    body: "Qahwa Vibes uses Google Analytics only if you choose Allow analytics. Analytics helps understand what people enjoy and where the site can improve. If you choose No thanks, Google Analytics does not load.",
+    body: "Qahwa Vibes uses Google Consent Mode. Before analytics consent, Google may receive limited cookieless signals about consent status. Full analytics storage is enabled only when you choose Allow analytics.",
   },
   {
     title: "Browser storage",

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import AnalyticsConsentManager from "./components/analytics-consent";
 import "./globals.css";
 
@@ -33,7 +34,9 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
-        <AnalyticsConsentManager />
+        <Suspense fallback={null}>
+          <AnalyticsConsentManager />
+        </Suspense>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ const CONSENT_STORAGE_KEY = "qahwa-vibes-analytics-consent";
 const PRIVACY_SETTINGS_EVENT = "qahwa-vibes:open-privacy-settings";
 
 type AnalyticsConsent = "allowed" | "declined";
+type AnalyticsStorage = "granted" | "denied";
 
 declare global {
   interface Window {
@@ -17,10 +18,14 @@ declare global {
 }
 
 function getSavedConsent() {
-  const savedConsent = window.localStorage.getItem(CONSENT_STORAGE_KEY);
+  try {
+    const savedConsent = window.localStorage.getItem(CONSENT_STORAGE_KEY);
 
-  if (savedConsent === "allowed" || savedConsent === "declined") {
-    return savedConsent;
+    if (savedConsent === "allowed" || savedConsent === "declined") {
+      return savedConsent;
+    }
+  } catch {
+    return null;
   }
 
   return null;
@@ -32,16 +37,58 @@ function getGoogleAnalyticsId() {
   return process.env.NEXT_PUBLIC_GA_ID;
 }
 
+function ensureGoogleTag() {
+  window.dataLayer = window.dataLayer ?? [];
+  window.gtag =
+    window.gtag ??
+    ((...args: unknown[]) => {
+      window.dataLayer?.push(args);
+    });
+}
+
+function getAnalyticsStorage(consent: AnalyticsConsent | null): AnalyticsStorage {
+  return consent === "allowed" ? "granted" : "denied";
+}
+
+function setConsentModeDefault(consent: AnalyticsConsent | null) {
+  ensureGoogleTag();
+
+  // Consent Mode must be set before the GA config call. Ads consent remains
+  // denied because Qahwa Vibes only uses GA4, not Google Ads.
+  window.gtag?.("consent", "default", {
+    analytics_storage: getAnalyticsStorage(consent),
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("GA consent mode initialized");
+  }
+}
+
+function updateConsentMode(consent: AnalyticsConsent) {
+  ensureGoogleTag();
+
+  window.gtag?.("consent", "update", {
+    analytics_storage: getAnalyticsStorage(consent),
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
+}
+
 export default function AnalyticsConsentManager() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [hasMounted, setHasMounted] = useState(false);
   const [consent, setConsent] = useState<AnalyticsConsent | null>(null);
   const [isBannerOpen, setIsBannerOpen] = useState(false);
+  const [isConsentModeReady, setIsConsentModeReady] = useState(false);
   const [isGaReady, setIsGaReady] = useState(false);
   const hasInitializedGaRef = useRef(false);
 
-  const gaId = consent === "allowed" ? getGoogleAnalyticsId() : undefined;
+  const gaId = getGoogleAnalyticsId();
   const currentPath = useMemo(() => {
     const queryString = searchParams.toString();
 
@@ -53,8 +100,10 @@ export default function AnalyticsConsentManager() {
       const savedConsent = getSavedConsent();
 
       // Read consent after mount so the first client render matches the server.
+      setConsentModeDefault(savedConsent);
       setConsent(savedConsent);
       setIsBannerOpen(savedConsent === null);
+      setIsConsentModeReady(true);
       setHasMounted(true);
     }, 0);
 
@@ -80,8 +129,7 @@ export default function AnalyticsConsentManager() {
       return;
     }
 
-    // Track App Router navigations after consent. Google checks may not detect
-    // this tag until a visitor accepts analytics and the script is allowed to load.
+    // Track App Router navigations only after analytics storage is granted.
     window.gtag("event", "page_view", {
       page_path: currentPath,
       page_title: document.title,
@@ -89,9 +137,23 @@ export default function AnalyticsConsentManager() {
   }, [consent, currentPath, gaId, isGaReady]);
 
   function saveConsent(nextConsent: AnalyticsConsent) {
-    window.localStorage.setItem(CONSENT_STORAGE_KEY, nextConsent);
+    try {
+      window.localStorage.setItem(CONSENT_STORAGE_KEY, nextConsent);
+    } catch {
+      // The live consent update still works even if storage is unavailable.
+    }
+
+    updateConsentMode(nextConsent);
     setConsent(nextConsent);
     setIsBannerOpen(false);
+
+    if (
+      nextConsent === "allowed" &&
+      process.env.NODE_ENV !== "production" &&
+      gaId
+    ) {
+      console.info(`Qahwa Vibes analytics enabled: ${gaId}`);
+    }
   }
 
   function setupGoogleAnalytics() {
@@ -100,14 +162,17 @@ export default function AnalyticsConsentManager() {
     }
 
     hasInitializedGaRef.current = true;
-    window.dataLayer = window.dataLayer ?? [];
-    window.gtag = (...args: unknown[]) => {
-      window.dataLayer?.push(args);
-    };
-    // Runs only after consent and script load, never during initial render.
-    window.gtag("js", new Date());
-    window.gtag("config", gaId, { send_page_view: false });
-    if (process.env.NODE_ENV !== "production") {
+    ensureGoogleTag();
+    const gtag = window.gtag;
+
+    if (!gtag) {
+      return;
+    }
+
+    // Config runs once after Consent Mode defaults and never during render.
+    gtag("js", new Date());
+    gtag("config", gaId, { send_page_view: false });
+    if (consent === "allowed" && process.env.NODE_ENV !== "production") {
       console.info(`Qahwa Vibes analytics enabled: ${gaId}`);
     }
     setIsGaReady(true);
@@ -119,10 +184,12 @@ export default function AnalyticsConsentManager() {
 
   return (
     <>
-      {gaId ? (
-        // Consent-gated GA load. Google's automatic "tag detected" checker may
-        // report no tag until someone clicks "Allow analytics."
+      {gaId && isConsentModeReady ? (
+        // Advanced Consent Mode: the tag loads on first page load, but Consent
+        // Mode defaults are set first and analytics storage stays denied until
+        // the visitor clicks "Allow analytics."
         <Script
+          id="qahwa-google-tag"
           src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
           strategy="afterInteractive"
           onLoad={setupGoogleAnalytics}
