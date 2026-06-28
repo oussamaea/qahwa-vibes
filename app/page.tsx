@@ -1,7 +1,9 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import PrivacySettingsButton from "./components/privacy-settings-button";
 
 type SoundId =
   | "cafe-chatter"
@@ -324,7 +326,7 @@ export default function Home() {
               Help keep the café open.
             </p>
             <a
-              href="https://ko-fi.com/oeafeed"
+              href="https://ko-fi.com/qahwavibes"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex rotate-[-1deg] items-center justify-center rounded-full border border-[#5a3725]/70 bg-[#f6c36e] px-3.5 py-1.5 text-xs font-black uppercase tracking-wide text-[#4a2a1b] shadow-[0_8px_18px_rgba(42,23,16,0.16)] transition duration-300 hover:-translate-y-0.5 hover:rotate-0 hover:bg-[#ffd783] focus:outline-none focus:ring-4 focus:ring-[#d96f32]/30"
@@ -367,7 +369,7 @@ export default function Home() {
                   Help keep the café open.
                 </p>
                 <a
-                  href="https://ko-fi.com/oeafeed"
+                  href="https://ko-fi.com/qahwavibes"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex rotate-[-1deg] items-center justify-center rounded-full border border-[#5a3725]/80 bg-[#f6c36e] px-4 py-2 text-sm font-black uppercase tracking-wide text-[#4a2a1b] shadow-[0_10px_22px_rgba(42,23,16,0.18)] transition duration-300 hover:-translate-y-0.5 hover:rotate-0 hover:bg-[#ffd783] focus:outline-none focus:ring-4 focus:ring-[#d96f32]/35"
@@ -546,8 +548,17 @@ export default function Home() {
           })}
         </section>
 
-        <footer className="rounded-t-[1.5rem] border-x-2 border-t-2 border-[#4d3122] bg-[#2a1710]/92 px-5 py-5 text-center text-sm font-bold text-[#f2dfb8]">
-          Made for slow mornings, late study nights, and coffee thoughts.
+        <footer className="flex flex-col items-center gap-3 rounded-t-[1.5rem] border-x-2 border-t-2 border-[#4d3122] bg-[#2a1710]/92 px-5 py-5 text-center text-sm font-bold text-[#f2dfb8] sm:flex-row sm:justify-center sm:gap-5">
+          <span>
+            Made for slow mornings, late study nights, and coffee thoughts.
+          </span>
+          <Link
+            href="/privacy"
+            className="font-black text-[#f6c36e] underline-offset-4 transition hover:text-[#fff4d2] hover:underline focus:outline-none focus:ring-2 focus:ring-[#f6c36e]/50"
+          >
+            Privacy
+          </Link>
+          <PrivacySettingsButton />
         </footer>
       </div>
     </main>

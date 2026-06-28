@@ -1,10 +1,27 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import AnalyticsConsentManager from "./components/analytics-consent";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://qahwavibes.art"),
   title: "Qahwa Vibes",
   description:
-    "A cozy café corner for studying, relaxing, and getting lost in the mood.",
+    "A cozy virtual café sound mixer for studying, relaxing, and focus.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Qahwa Vibes",
+    description:
+      "A cozy virtual café sound mixer for studying, relaxing, and focus.",
+    url: "https://qahwavibes.art",
+    siteName: "Qahwa Vibes",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2a1710",
 };
 
 export default function RootLayout({
@@ -14,7 +31,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <AnalyticsConsentManager />
+      </body>
     </html>
   );
 }
